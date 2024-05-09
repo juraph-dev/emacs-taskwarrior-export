@@ -1,6 +1,11 @@
-# emacs-taskwarrior-export
+# Org-mode to TaskWarrior export
 Born from necessity. Org-mode is goated for managing information, but the visualisation for agendas/task tracking is dogshit. Taskwarrior has fantastic visualisation and tracking functionality, but is absolutely not designed for managing information. Why not both?
 
+## Usage
+``` bash
+$ ./emacs-taskwarrior-export.py ~/.org/file.org
+```
+## Background
 This script iterates through an org-mode file, looking for ```TODO``` tags to mark as taskwarrior tasks. It can also handle a few org-mode ```SCHEDULED``` tags, such as: 
 ``` org
 SCHEDULED: <2024-06-10 Mon 14:00> \
