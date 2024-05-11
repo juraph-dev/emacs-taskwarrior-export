@@ -93,8 +93,8 @@ def parse_org_mode_tasks(file_path):
     for idx, line in enumerate(split_file):
         priority = ''
         # A task can have priorities ([#A], [#B] [#C]). Translate to
-        # taskwarrior Low, Medium, High priortiies, Trimmming from
-        # string in process
+        # taskwarrior Low, Medium, High priortiies, Trimmming this from
+        # the string in the process
         if priority_pattern.search(line):
             leading_bracket = line.find("[#")
             priority = priority_table[line[leading_bracket+2]]
@@ -104,12 +104,15 @@ def parse_org_mode_tasks(file_path):
         # taskwarrior task as comeplete
         if any(map(line.__contains__, org_matches)):
             state = next(substring for substring in org_matches if substring in line)
-            task = line[line.find(str( state ))+5:]
-            start = duration = repeat = None
+            task = line[line.find(str(state))+5:].rstrip()
+            start = None
+            duration = None
+            repeat = None
             # Check next index for a SCHEDULED property
-            if any(map(split_file[idx+1].__contains__, schedule_matches)):
-                schedule_type = next(substring for substring in schedule_matches if substring in split_file[idx+1])
-                task_deadline = split_file[idx+1].split(schedule_type)[1]
+            next_line = split_file[idx+1].rstrip()
+            if any(map(next_line.__contains__, schedule_matches)):
+                schedule_type = next(substring for substring in schedule_matches if substring in next_line)
+                task_deadline = next_line.split(schedule_type)[1]
                 # Parse the string into a datetime object
                 task_datetime = parse_scheduled_string(task_deadline)
                 if (type(task_datetime) == tuple):
@@ -118,18 +121,20 @@ def parse_org_mode_tasks(file_path):
             tasks.append((task, priority, state, start, duration, repeat))
     return tasks
 
-def get_task_object(task_desc):
-    '''Getter function. Mostly used to prevent failures when task string has unexpected characters'''
-    try:
-        return client.get_task(description=task_desc)
-    except exceptions.TaskwarriorError as error:
-        print(f'Failed to import task {task_desc}: ', error)
-        return None, -1
+def get_entry_by_description(python_dict, description):
+    pending_entry = next((entry for entry in python_dict['pending'] if entry['description'] == description), None)
+    if pending_entry:
+        return client.get_task(id=pending_entry["id"])
+
+    completed_entry = next((entry for entry in python_dict['completed'] if entry['description'] == description), None)
+    if completed_entry:
+        return client.get_task(id=completed_entry["id"])
+    return None, None
 
 def import_tasks_to_taskwarrior(tasks):
     current_list = client.load_tasks()
     for task, task_priority, state, start, delta, repeat in tasks:
-        task_id, task_object = get_task_object(task)
+        task_id, task_object = get_entry_by_description(current_list, task)
         if task_object == -1:
             continue
         if task_id is not None:
